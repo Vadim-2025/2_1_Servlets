@@ -1,51 +1,42 @@
 package ru.netology.repository;
 
-import ru.netology.exception.NotFoundException;
 import ru.netology.model.Post;
 
-import java.util.*;
-import java.util.concurrent.Callable;
+import java.util.Collection;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 
-import static ru.netology.servlet.MainServlet.threadPool;
-
-// Stub
 public class PostRepository {
+    private final ConcurrentMap<Long, Post> allPosts;
+    private final AtomicLong idCounter = new AtomicLong();
 
-  private static final ConcurrentHashMap<Long, Post> postMap = new ConcurrentHashMap<>();
-
-  public List<Post> all() {
-    if (postMap.isEmpty()) {
-      throw new NotFoundException("Список постов пуст");
+    public PostRepository() {
+        this.allPosts = new ConcurrentHashMap<>();
     }
-    List<Post> data = new ArrayList<>();
-    for (Map.Entry<Long, Post> entry : postMap.entrySet()) {
-      data.add(entry.getValue());
-    }
-    return data;
-  }
 
-  public Optional<Post> getById(long id) {
-    if (postMap.containsKey(id)) {
-      return Optional.ofNullable(postMap.get(id));
+    public Collection<Post> all() {
+        return allPosts.values();
     }
-    throw new NotFoundException("Неверный идентификатор поста");
-  }
 
-  public Post save(Post post) throws ExecutionException, InterruptedException {
-    if (postMap.containsKey(post.getId())) {
-      postMap.put(post.getId(), post);
-    } else {
-      Post newPost = new Post(post.getContent());
-      postMap.put(newPost.getId(), newPost);
-      return newPost;
+    public Optional<Post> getById(long id) {
+        return Optional.ofNullable(allPosts.get(id));
     }
-    return post;
-  }
 
-  public void removeById(long id) {
-    postMap.remove(id);
-  }
+    public Post save(Post savePost) {
+        if (savePost.getId() == 0) {
+            long id = idCounter.incrementAndGet();
+            savePost.setId(id);
+            allPosts.put(id, savePost);
+        } else if (savePost.getId() != 0) {
+            Long currentId = savePost.getId();
+            allPosts.put(currentId, savePost);
+        }
+        return savePost;
+    }
+
+    public void removeById(long id) {
+        allPosts.remove(id);
+    }
 }
